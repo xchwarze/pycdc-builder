@@ -5,30 +5,25 @@ on:
   pull_request:
 
 jobs:
-  build:
+  run-tests:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v2
-      - name: Configure and Build
-        run: |
-          mkdir build
-          cd build
-          cmake -G "Visual Studio 17 2022" -A Win32 ..
-          cmake --build . --config Debug
-          cmake --build . --config Release
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      # This should probably be fixed to work from MSVC without needing to
-      # use a bash shell and the GNU userland tools...  But for now, the
-      # GH Actions environment provides what we need.
-      - name: Test
-        run: |
-          cd build\Debug
-          bash.exe ..\..\tests\all_tests.sh
+      - name: Create build directory
+        run: mkdir build
+        
+      - name: Configure CMake
+        working-directory: build
+        run: cmake .. -G "Visual Studio 17 2022" -A Win32 -DCMAKE_BUILD_TYPE=Debug
+
+      - name: Build
+        working-directory: build
+        run: cmake --build . --config Debug
+
+      - name: Run Custom Bash Tests
+        working-directory: build/Debug
+        run: bash.exe ..\..\tests\all_tests.sh
         env:
           PYTHON_EXE: python.exe
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: pycdc-release
-          path: build\Release\*.exe
