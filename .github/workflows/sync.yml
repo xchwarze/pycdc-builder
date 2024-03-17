@@ -1,0 +1,34 @@
+name: Merge Upstream Repo
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+jobs:
+  merge-upstream:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout current repo
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Configure user name and email
+        run: |
+          git config user.name "Sync-Bot"
+          git config user.email "xchwarze@gmail.com"
+
+      - name: Add remote upstream
+        run: git remote add upstream https://github.com/zrax/pycdc.git
+
+      - name: Fetch upstream changes
+        run: git fetch upstream
+
+      - name: Merge upstream changes
+        run: git merge upstream/master
+
+      - name: Push changes
+        run: |
+          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/xchwarze/pycdc-builder.git
+          git push origin master
