@@ -27,3 +27,10 @@ jobs:
         run: bash.exe ..\..\tests\all_tests.sh
         env:
           PYTHON_EXE: python.exe
+          JOBS: 4
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: pycdc-release
+          path: build\Release\*.exe
