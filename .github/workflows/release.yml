@@ -1,0 +1,76 @@
+name: Create Release
+on:
+  workflow_run:
+    workflows: ["MSVC-CI"]
+    branches: [master]
+    types:
+      - completed
+
+jobs:      
+  generate-build:
+    runs-on: windows-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    strategy:
+      max-parallel: 2
+      matrix:
+        variant: [Release]
+        platform: [Win32, x64]
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Create Build Environment
+        run: mkdir build
+        
+      - name: Configure CMake ${{ matrix.variant }} for ${{ matrix.platform }}
+        working-directory: ./build
+        run: cmake .. -G "Visual Studio 17 2022" -A ${{ matrix.platform }} -DCMAKE_CONFIGURATION_TYPES="${{ matrix.variant }}"
+      
+      - name: Build
+        working-directory: ./build
+        run: cmake --build . --config ${{ matrix.variant }}
+
+      - name: Compress Build Artifacts
+        working-directory: ./build/Release
+        run: Compress-Archive -Path *.exe -DestinationPath ../../pycdc-release-${{ matrix.platform }}.zip
+
+      - name: Upload Zipped Release Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: pycdc-release-${{ matrix.platform }}
+          path: ./pycdc-release-${{ matrix.platform }}.zip
+        
+  create-release:
+    needs: generate-build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Prepare Release Name
+        id: prep
+        run: |
+          DATE=$(date +'%Y%m%d')  # Format: YYYYMMDD
+          echo "::set-output name=RELEASE_NAME::$DATE-${{ github.run_id }}"
+        shell: bash
+
+      - name: Create Tag
+        run: |
+          git config user.name "Sync-Bot"
+          git config user.email "xchwarze@gmail.com"
+          git tag ${{ steps.prep.outputs.RELEASE_NAME }}
+          git push origin ${{ steps.prep.outputs.RELEASE_NAME }}
+
+      - name: Download Build Artifact
+        uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts
+
+      - name: Create Release
+        uses: ncipollo/release-action@v1.14.0
+        with:
+          artifacts: "./artifacts/pycdc-release-x64/*,./artifacts/pycdc-release-Win32/*"
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag: ${{ steps.prep.outputs.RELEASE_NAME }}
+          name: ${{ steps.prep.outputs.RELEASE_NAME }}
+          body: "New release based on remote changes. #${{ github.run_id }}"
+          allowUpdates: true
