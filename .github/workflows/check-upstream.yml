@@ -1,0 +1,59 @@
+name: Check Upstream
+
+on:
+  schedule:
+    # At 00:00 on days 1 and 16 of each month
+    - cron: '0 0 1,16 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  UPSTREAM_URL: https://github.com/zrax/pycdc.git
+  HASH_FILE: last-hash.txt
+
+jobs:
+  check-and-update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout this repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Read last known hash
+        id: readhash
+        run: |
+          if [[ -f $HASH_FILE ]]; then
+            echo "::set-output name=last_hash::$(cat $HASH_FILE)"
+          else
+            echo "::set-output name=last_hash::"
+          fi
+
+      - name: Clone upstream shallow
+        id: clone
+        run: |
+          git clone --no-checkout $UPSTREAM_URL upstream
+          cd upstream
+          git fetch --depth=1 origin master
+          git checkout FETCH_HEAD
+          echo "::set-output name=new_hash::$(git rev-parse HEAD)"
+
+      - name: Compare hashes
+        id: compare
+        run: |
+          if [[ "${{ steps.clone.outputs.new_hash }}" != "${{ steps.readhash.outputs.last_hash }}" ]]; then
+            echo "::set-output name=changed::true"
+          else
+            echo "::set-output name=changed::false"
+          fi
+
+      - name: Update last_hash.txt and push
+        if: steps.compare.outputs.changed == 'true'
+        run: |
+          echo "${{ steps.clone.outputs.new_hash }}" > $HASH_FILE
+          git add $HASH_FILE
+          git commit -m "Update last_hash to ${{ steps.clone.outputs.new_hash }}"
+          git push origin master

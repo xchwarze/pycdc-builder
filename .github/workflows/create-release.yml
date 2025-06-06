@@ -1,0 +1,45 @@
+name: Create Release
+
+on:
+  workflow_run:
+    workflows: ["Build Artifacts"]
+    branches: [master]
+    types: [completed]
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout this repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine release tag
+        id: tag
+        run: |
+          SHA=${{ github.event.workflow_run.head_commit_id }}
+          echo "::set-output name=TAG::$SHA"
+
+      - name: Create Git tag
+        run: |
+          git tag ${{ steps.tag.outputs.TAG }}
+          git push origin ${{ steps.tag.outputs.TAG }}
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts
+
+      - name: Create Release
+        uses: ncipollo/release-action@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag: ${{ steps.tag.outputs.TAG }}
+          name: Release ${{ steps.tag.outputs.TAG }}
+          body: "Automated build for upstream commit ${{ steps.tag.outputs.TAG }}"
+          artifacts: "./artifacts/*"

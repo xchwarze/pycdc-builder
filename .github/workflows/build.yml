@@ -1,0 +1,44 @@
+name: Build Artifacts
+
+on:
+  push:
+    branches: [master]
+
+jobs:
+  build:
+    if: "!contains(github.event.head_commit.message, 'Merge pull request')"
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        platform: [Win32, x64]
+      fail-fast: false
+
+    steps:
+      - name: Checkout this repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Clone upstream full
+        run: |
+          git clone https://github.com/zrax/pycdc.git upstream
+        shell: bash
+
+      - name: Configure and Build ${{ matrix.platform }}
+        working-directory: upstream
+        run: |
+          mkdir build
+          cd build
+          cmake -G "Visual Studio 17 2022" -A ${{ matrix.platform }} -DCMAKE_CONFIGURATION_TYPES="Release" ..
+          cmake --build . --config Release
+
+      - name: Package Release Artifact
+        working-directory: upstream/build/Release
+        run: |
+          Compress-Archive -Path *.exe -DestinationPath ../../pycdc-${{ matrix.platform }}.zip
+
+      - name: Upload Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pycdc-${{ matrix.platform }}
+          path: upstream/pycdc-${{ matrix.platform }}.zip
