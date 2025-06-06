@@ -70,5 +70,4 @@ jobs:
           commit: ${{ steps.tag.outputs.RELEASE_SHA }}
           name: Release ${{ steps.tag.outputs.RELEASE_NAME }}
           body: Automated build for upstream commit ${{ steps.tag.outputs.RELEASE_NAME }}
-          files: |
-            artifacts/pycdc-release-*/**/*.zip
+          artifacts: "artifacts/*/*.zip"
