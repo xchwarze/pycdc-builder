@@ -2,7 +2,6 @@ name: Check Upstream
 
 on:
   schedule:
-    # At 00:00 on days 1 and 16 of each month
     - cron: '0 0 1,16 * *'
   workflow_dispatch:
 
@@ -26,10 +25,10 @@ jobs:
       - name: Read last known hash
         id: readhash
         run: |
-          if [[ -f $HASH_FILE ]]; then
-            echo "::set-output name=last_hash::$(cat $HASH_FILE)"
+          if [[ -f "$HASH_FILE" ]]; then
+            echo "last_hash=$(cat $HASH_FILE)" >> $GITHUB_OUTPUT
           else
-            echo "::set-output name=last_hash::"
+            echo "last_hash=" >> $GITHUB_OUTPUT
           fi
 
       - name: Clone upstream shallow
@@ -39,21 +38,21 @@ jobs:
           cd upstream
           git fetch --depth=1 origin master
           git checkout FETCH_HEAD
-          echo "::set-output name=new_hash::$(git rev-parse HEAD)"
+          echo "new_hash=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
 
       - name: Compare hashes
         id: compare
         run: |
           if [[ "${{ steps.clone.outputs.new_hash }}" != "${{ steps.readhash.outputs.last_hash }}" ]]; then
-            echo "::set-output name=changed::true"
+            echo "changed=true" >> $GITHUB_OUTPUT
           else
-            echo "::set-output name=changed::false"
+            echo "changed=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Update last_hash.txt and push
+      - name: Update last-hash.txt and push
         if: steps.compare.outputs.changed == 'true'
         run: |
           echo "${{ steps.clone.outputs.new_hash }}" > $HASH_FILE
           git add $HASH_FILE
-          git commit -m "Update last_hash to ${{ steps.clone.outputs.new_hash }}"
+          git commit -m "Update last-hash to ${{ steps.clone.outputs.new_hash }}"
           git push origin master

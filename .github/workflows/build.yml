@@ -22,7 +22,6 @@ jobs:
       - name: Clone upstream full
         run: |
           git clone https://github.com/zrax/pycdc.git upstream
-        shell: bash
 
       - name: Configure and Build ${{ matrix.platform }}
         working-directory: upstream

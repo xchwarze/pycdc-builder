@@ -13,6 +13,7 @@ jobs:
   publish:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout this repo
         uses: actions/checkout@v4
@@ -22,8 +23,8 @@ jobs:
       - name: Determine release tag
         id: tag
         run: |
-          SHA=${{ github.event.workflow_run.head_commit_id }}
-          echo "::set-output name=TAG::$SHA"
+          SHA=${{ github.event.workflow_run.head_commit.id }}
+          echo "TAG=$SHA" >> $GITHUB_OUTPUT
 
       - name: Create Git tag
         run: |
