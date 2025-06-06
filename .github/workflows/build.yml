@@ -1,10 +1,10 @@
 name: Build Artifacts
 
 on:
-  push:
+  workflow_run:
+    workflows: ["Check Upstream"]
     branches: [master]
-    paths:
-      - "last-hash.txt"
+    types: [completed]
   workflow_dispatch:
 
 jobs:
