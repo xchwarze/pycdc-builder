@@ -25,19 +25,19 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Determine release tag from last-hash.txt
-        id: tag
+      - name: Determine release inputs
+        id: release
         run: |
           if [[ ! -f "$HASH_FILE" ]]; then
             echo "ERROR: $HASH_FILE not found." >&2
             exit 1
           fi
 
-          SHA=$(cat "$HASH_FILE")
-          SHORT=${SHA:0:7}
+          REMOTE_SHA=$(cat last-hash.txt)
+          SHORT=${REMOTE_SHA:0:7}
           DATE=$(date +'%Y%m%d')
-          echo "tag=$DATE-$SHORT" >> $GITHUB_OUTPUT
-          echo "commit=$SHA"      >> $GITHUB_OUTPUT
+          echo "tag=$DATE-$SHORT"   >> $GITHUB_OUTPUT
+          echo "commit=$GITHUB_SHA" >> $GITHUB_OUTPUT
 
       - name: Download latest Build Artifacts
         env:
@@ -68,8 +68,7 @@ jobs:
         uses: ncipollo/release-action@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          tag: ${{ steps.tag.outputs.tag }}
-          commit: ${{ steps.tag.outputs.commit }}
-          name: Release ${{ steps.tag.outputs.tag }}
-          body: "Automated build for upstream commit ${{ steps.tag.outputs.tag }}"
+          tag:    ${{ steps.release.outputs.tag }}
+          commit: ${{ steps.release.outputs.commit }}
+          name:   Release ${{ steps.release.outputs.tag }}
           artifacts: "artifacts/*/*.zip"
