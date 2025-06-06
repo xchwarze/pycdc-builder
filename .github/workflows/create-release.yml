@@ -37,11 +37,6 @@ jobs:
           DATE=$(date +'%Y%m%d')
           echo "TAG=$DATE-$SHORT" >> $GITHUB_OUTPUT
 
-      - name: Create Git tag
-        run: |
-          git tag "$TAG"
-          git push origin "$TAG"
-
       - name: Download latest Build Artifacts
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -71,9 +66,9 @@ jobs:
         uses: ncipollo/release-action@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          tag: ${{ steps.tag.outputs.TAG }}
-          name: Release ${{ steps.tag.outputs.TAG }}
-          body: "Automated build for upstream commit ${{ steps.tag.outputs.TAG }}"
+          tag: ${{ steps.tag.outputs.RELEASE_NAME }}
+          commit: ${{ steps.tag.outputs.RELEASE_SHA }}
+          name: Release ${{ steps.tag.outputs.RELEASE_NAME }}
+          body: Automated build for upstream commit ${{ steps.tag.outputs.RELEASE_NAME }}
           files: |
-            artifacts/pycdc-release-Win32/pycdc-release-Win32.zip
-            artifacts/pycdc-release-x64/pycdc-release-x64.zip
+            artifacts/pycdc-release-*/**/*.zip
