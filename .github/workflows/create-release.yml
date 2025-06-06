@@ -9,7 +9,10 @@ on:
 
 permissions:
   contents: write
-  actions: read 
+  actions: read
+
+env:
+  HASH_FILE: last-hash.txt
 
 jobs:
   publish:
@@ -22,23 +25,33 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Determine release tag
+      - name: Determine release tag from last-hash.txt
         id: tag
         run: |
-          SHA=${{ github.event.workflow_run.head_commit.id }}
+          if [[ ! -f "$HASH_FILE" ]]; then
+            echo "ERROR: $HASH_FILE not found." >&2
+            exit 1
+          fi
+          SHA=$(cat "$HASH_FILE")
           SHORT=${SHA:0:7}
           DATE=$(date +'%Y%m%d')
           echo "TAG=$DATE-$SHORT" >> $GITHUB_OUTPUT
 
-      - name: Create Git tag
+      - name: Create Git tag (if not exists)
         run: |
-          git tag ${{ steps.tag.outputs.TAG }}
-          git push origin ${{ steps.tag.outputs.TAG }}
+          TAG=${{ steps.tag.outputs.TAG }}
+          if git rev-parse "refs/tags/$TAG" >/dev/null 2>&1; then
+            echo "Tag $TAG already exists, skipping."
+          else
+            git tag "$TAG"
+            git push origin "$TAG"
+          fi
 
-      - name: Download latest Build Artifacts
+      - name: Download latest Build Artifacts (debug)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          echo "Fetching latest successful run ID for 'Build Artifacts'..."
           LATEST_ID=$(gh run list \
             --workflow "Build Artifacts" \
             --branch master \
@@ -46,13 +59,29 @@ jobs:
             --json databaseId,conclusion \
             --jq '.[] | select(.conclusion=="success") | .databaseId' \
           )
-
+          echo "Latest successful run ID: $LATEST_ID"
           if [[ -z "$LATEST_ID" ]]; then
-            echo "❌ No successful Build Artifacts execution was found on master."
+            echo "❌ No successful Build Artifacts run found." >&2
             exit 1
           fi
-
+          echo "Downloading artifacts from run $LATEST_ID..."
           gh run download "$LATEST_ID" --dir ./artifacts
+          echo "Contents of ./artifacts:"
+          ls -R ./artifacts
+
+      - name: Zip artifact directories
+        run: |
+          mkdir -p packaged
+          for d in ./artifacts/*; do
+            if [[ -d "$d" ]]; then
+              BASENAME=$(basename "$d")
+              ZIPFILE="packaged/${BASENAME}.zip"
+              echo "Zipping $d → $ZIPFILE"
+              zip -r "$ZIPFILE" "$d"
+            fi
+          done
+          echo "Packaged files:"
+          ls -1 packaged
 
       - name: Create Release
         uses: ncipollo/release-action@v1
@@ -61,4 +90,4 @@ jobs:
           tag: ${{ steps.tag.outputs.TAG }}
           name: Release ${{ steps.tag.outputs.TAG }}
           body: "Automated build for upstream commit ${{ steps.tag.outputs.TAG }}"
-          artifacts: "./artifacts/*"
+          artifacts: "packaged/*.zip"
