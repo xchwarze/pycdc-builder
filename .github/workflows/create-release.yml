@@ -24,7 +24,9 @@ jobs:
         id: tag
         run: |
           SHA=${{ github.event.workflow_run.head_commit.id }}
-          echo "TAG=$SHA" >> $GITHUB_OUTPUT
+          SHORT=${SHA:0:7}
+          DATE=$(date +'%Y%m%d')
+          echo "TAG=$DATE-$SHORT" >> $GITHUB_OUTPUT
 
       - name: Create Git tag
         run: |
