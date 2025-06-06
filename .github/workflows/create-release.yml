@@ -37,15 +37,10 @@ jobs:
           DATE=$(date +'%Y%m%d')
           echo "TAG=$DATE-$SHORT" >> $GITHUB_OUTPUT
 
-      - name: Create Git tag (if not exists)
+      - name: Create Git tag
         run: |
-          TAG=${{ steps.tag.outputs.TAG }}
-          if git rev-parse "refs/tags/$TAG" >/dev/null 2>&1; then
-            echo "Tag $TAG already exists, skipping."
-          else
-            git tag "$TAG"
-            git push origin "$TAG"
-          fi
+          git tag "$TAG"
+          git push origin "$TAG"
 
       - name: Download latest Build Artifacts
         env:
