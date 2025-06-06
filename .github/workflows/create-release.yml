@@ -32,10 +32,12 @@ jobs:
             echo "ERROR: $HASH_FILE not found." >&2
             exit 1
           fi
+
           SHA=$(cat "$HASH_FILE")
           SHORT=${SHA:0:7}
           DATE=$(date +'%Y%m%d')
-          echo "TAG=$DATE-$SHORT" >> $GITHUB_OUTPUT
+          echo "tag=$DATE-$SHORT" >> $GITHUB_OUTPUT
+          echo "commit=$SHA"      >> $GITHUB_OUTPUT
 
       - name: Download latest Build Artifacts
         env:
@@ -66,8 +68,8 @@ jobs:
         uses: ncipollo/release-action@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          tag: ${{ steps.tag.outputs.RELEASE_NAME }}
-          commit: ${{ steps.tag.outputs.RELEASE_SHA }}
-          name: Release ${{ steps.tag.outputs.RELEASE_NAME }}
-          body: Automated build for upstream commit ${{ steps.tag.outputs.RELEASE_NAME }}
+          tag: ${{ steps.tag.outputs.tag }}
+          commit: ${{ steps.tag.outputs.commit }}
+          name: Release ${{ steps.tag.outputs.tag }}
+          body: "Automated build for upstream commit ${{ steps.tag.outputs.tag }}"
           artifacts: "artifacts/*/*.zip"
