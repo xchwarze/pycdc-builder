@@ -33,11 +33,22 @@ jobs:
           git tag ${{ steps.tag.outputs.TAG }}
           git push origin ${{ steps.tag.outputs.TAG }}
 
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          run-id: ${{ github.event.workflow_run.id }}
-          path: ./artifacts
+      - name: Download latest Build Artifacts
+        run: |
+          LATEST_ID=$(gh run list \
+            --workflow "Build Artifacts" \
+            --branch master \
+            --limit 1 \
+            --json databaseId,conclusion \
+            --jq '.[] | select(.conclusion=="success") | .databaseId' \
+          )
+
+          if [[ -z "$LATEST_ID" ]]; then
+            echo "❌ No successful Build Artifacts execution was found on master."
+            exit 1
+          fi
+
+          gh run download "$LATEST_ID" --dir ./artifacts
 
       - name: Create Release
         uses: ncipollo/release-action@v1
