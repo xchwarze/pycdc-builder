@@ -47,7 +47,7 @@ jobs:
             git push origin "$TAG"
           fi
 
-      - name: Download latest Build Artifacts (debug)
+      - name: Download latest Build Artifacts
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -59,29 +59,18 @@ jobs:
             --json databaseId,conclusion \
             --jq '.[] | select(.conclusion=="success") | .databaseId' \
           )
+
           echo "Latest successful run ID: $LATEST_ID"
           if [[ -z "$LATEST_ID" ]]; then
             echo "❌ No successful Build Artifacts run found." >&2
             exit 1
           fi
+
           echo "Downloading artifacts from run $LATEST_ID..."
           gh run download "$LATEST_ID" --dir ./artifacts
+
           echo "Contents of ./artifacts:"
           ls -R ./artifacts
-
-      - name: Zip artifact directories
-        run: |
-          mkdir -p packaged
-          for d in ./artifacts/*; do
-            if [[ -d "$d" ]]; then
-              BASENAME=$(basename "$d")
-              ZIPFILE="packaged/${BASENAME}.zip"
-              echo "Zipping $d → $ZIPFILE"
-              zip -r "$ZIPFILE" "$d"
-            fi
-          done
-          echo "Packaged files:"
-          ls -1 packaged
 
       - name: Create Release
         uses: ncipollo/release-action@v1
@@ -90,4 +79,6 @@ jobs:
           tag: ${{ steps.tag.outputs.TAG }}
           name: Release ${{ steps.tag.outputs.TAG }}
           body: "Automated build for upstream commit ${{ steps.tag.outputs.TAG }}"
-          artifacts: "packaged/*.zip"
+          files: |
+            artifacts/pycdc-release-Win32/pycdc-release-Win32.zip
+            artifacts/pycdc-release-x64/pycdc-release-x64.zip
